@@ -81,6 +81,10 @@ npm run start:dev      # http://localhost:4100
 
 ## Render에 올릴 때
 
-- Build Command: `npm install && npm run build`
-- Start Command: `npm run start:prod`
-- Environment: 위 표의 값을 Render 화면에 직접 넣어요. `DATABASE_URL`은 같은 Render 안이면 Internal Database URL을 써도 돼요. `FRONTEND_URL`에는 Vercel 주소를 넣어요.
+이 저장소의 [`render.yaml`](render.yaml)에 설정이 들어 있어요.
+
+1. Render 화면에서 **New → Blueprint**를 누르고 이 저장소를 골라요.
+2. 비밀값 두 개만 직접 넣어요: `DATABASE_URL`(같은 Render 안이면 Internal Database URL), `GPT_API_KEY`
+3. `JWT_SECRET`은 Render가 무작위로 만들어 주고, `FRONTEND_URL`은 Vercel 주소로 미리 넣어져 있어요. Vercel 주소가 다르면 Environment에서 고쳐요.
+
+직접 만들 때는 Build Command `npm ci && npm run build`, Start Command `npm run start:prod`, Health Check Path `/health`를 쓰고 위 표의 값을 넣어요.

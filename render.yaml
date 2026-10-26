@@ -1,0 +1,26 @@
+# Render Blueprint: Render 화면에서 New → Blueprint 로 이 저장소를 고르면 아래 설정으로 서비스가 만들어진다.
+# 비밀값(DATABASE_URL, GPT_API_KEY)은 여기에 적지 않고, 만들 때 Render 화면에서 직접 입력한다.
+services:
+  - type: web
+    name: meeting-room-level3-backend
+    runtime: node
+    plan: free
+    region: oregon # DB와 같은 지역
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        sync: false # Render DB의 Internal Database URL 을 붙여 넣기
+      - key: DB_SCHEMA
+        value: meeting_room
+      - key: JWT_SECRET
+        generateValue: true # Render가 무작위 값을 만들어 줌
+      - key: GPT_API_KEY
+        sync: false # OpenAI API 키를 붙여 넣기
+      - key: GPT_MODEL
+        value: gpt-4o-mini
+      - key: FRONTEND_URL
+        value: https://meeting-room-level3-frontend.vercel.app
