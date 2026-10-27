@@ -1,15 +1,42 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { Transform } from 'class-transformer';
-import { IsString, Length } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  Length,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { CurrentUser } from '../common/auth.js';
 import type { AuthUser } from '../common/auth.js';
 import { AiService } from './ai.service.js';
+import type { ChatTurn } from './ai.service.js';
+
+class ChatTurnDto implements ChatTurn {
+  @IsIn(['user', 'assistant'], { message: '대화 내용이 올바르지 않아요.' })
+  role: 'user' | 'assistant';
+
+  @IsString({ message: '대화 내용이 올바르지 않아요.' })
+  @MaxLength(500, { message: '대화 내용이 너무 길어요.' })
+  content: string;
+}
 
 class AiReserveDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString({ message: '원하는 예약 내용을 문장으로 적어 주세요.' })
   @Length(2, 300, { message: '원하는 예약 내용을 2자 이상 300자 이하로 적어 주세요.' })
   text: string;
+
+  /** 앞서 주고받은 대화 (채팅으로 이어서 말할 때) */
+  @IsOptional()
+  @IsArray({ message: '대화 내용이 올바르지 않아요.' })
+  @ArrayMaxSize(12, { message: '대화가 너무 길어요. 새 대화로 다시 시작해 주세요.' })
+  @ValidateNested({ each: true })
+  @Type(() => ChatTurnDto)
+  history?: ChatTurnDto[];
 }
 
 @Controller('ai')
@@ -18,6 +45,6 @@ export class AiController {
 
   @Post('reserve')
   reserve(@CurrentUser() user: AuthUser, @Body() dto: AiReserveDto) {
-    return this.ai.reserve(user, dto.text);
+    return this.ai.reserve(user, dto.text, dto.history ?? []);
   }
 }

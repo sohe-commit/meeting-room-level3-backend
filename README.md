@@ -28,7 +28,7 @@ npm run start:dev      # http://localhost:4100
 | `DB_SCHEMA` | 이 과제 전용 스키마 이름 (기본 `meeting_room`). 다른 과제 테이블과 섞이지 않아요. |
 | `JWT_SECRET` | 로그인 증표를 만드는 긴 무작위 문자열 |
 | `GPT_API_KEY` | OpenAI GPT API 키 (AI 예약에 사용, 백엔드에만 둠) |
-| `GPT_MODEL` | GPT 모델 이름 (기본 `gpt-4o-mini`) |
+| `GPT_MODEL` | GPT 모델 이름 (기본 `gpt-4.1-mini`) |
 | `FRONTEND_URL` | 접속을 허용할 프론트엔드 주소. 여러 개면 쉼표로 구분 |
 
 ## 확인용 가상 계정
@@ -58,6 +58,7 @@ npm run start:dev      # http://localhost:4100
 | R11 | 시설 제보는 분류 필수, 내용 2~200자, 쓴 뒤 수정·삭제 불가 |
 | R12 | 제보 처리 완료는 관리자만, 한 번 처리하면 되돌릴 수 없음 |
 | R13 | 장비 고장 제보는 그 회의실에 있는 장비(또는 기타 장비)만 고를 수 있음 |
+| R14 | AI로 여러 날을 한 번에 예약할 때는 최대 5일, 날짜마다 R1~R7 검사 (되는 날만 예약하고 안 되는 날은 이유 안내) |
 
 모든 날짜·시간은 한국 시간 기준으로 계산해요. (Render 서버가 UTC여도 같은 결과)
 
@@ -75,7 +76,7 @@ npm run start:dev      # http://localhost:4100
 | 전체 예약 (필터·검색) | `GET /reservations?date=&roomId=&departmentId=&status=&q=` | 관리자 |
 | 시설 제보 보기 / 쓰기 | `GET /rooms/:id/issues`, `POST /rooms/:id/issues` | 로그인 |
 | 전체 제보 / 처리 완료 | `GET /issues?roomId=&category=&equipment=&status=`, `PATCH /issues/:id/resolve` | 관리자 |
-| AI 예약 | `POST /ai/reserve` | 로그인 |
+| AI 예약 (챗봇) | `POST /ai/reserve` — `{ text, history? }` (history: 앞서 주고받은 대화, 최대 12줄) | 로그인 |
 | 현황판 | `GET /admin/dashboard` | 관리자 |
 | 가상 데이터 다시 채우기 | `POST /admin/seed` | 관리자 |
 

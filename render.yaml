@@ -21,6 +21,6 @@ services:
       - key: GPT_API_KEY
         sync: false # OpenAI API 키를 붙여 넣기
       - key: GPT_MODEL
-        value: gpt-4o-mini
+        value: gpt-4.1-mini
       - key: FRONTEND_URL
         value: https://meeting-room-level3-frontend.vercel.app
