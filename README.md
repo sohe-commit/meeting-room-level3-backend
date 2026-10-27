@@ -5,6 +5,8 @@
 
 > 회사, 직원, 연락처, 예약은 **모두 가상 데이터**예요.
 
+📄 **기획서:** [프론트엔드 저장소의 기획서.md](https://github.com/sohe-commit/meeting-room-level3-frontend/blob/main/기획서.md)
+
 ## 내 컴퓨터에서 실행하기
 
 ```bash
