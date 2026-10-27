@@ -18,7 +18,7 @@ import {
 } from '../common/time.js';
 import type { DisplayStatus } from '../common/time.js';
 import { Reservation } from '../entities/reservation.entity.js';
-import type { CreatedVia } from '../entities/reservation.entity.js';
+import type { CreatedVia, MeetingType } from '../entities/reservation.entity.js';
 import { Room } from '../entities/room.entity.js';
 
 export interface CreateReservationInput {
@@ -28,6 +28,7 @@ export interface CreateReservationInput {
   endTime: string;
   title: string;
   attendeeCount: number;
+  meetingType?: MeetingType;
 }
 
 export interface EquipmentNeeds {
@@ -67,6 +68,7 @@ export class ReservationsService {
       roomName: r.room?.name ?? null,
       roomFloor: r.room?.floor ?? null,
       title: r.title,
+      meetingType: r.meetingType,
       attendeeCount: r.attendeeCount,
       date: start.date,
       startTime: start.time,
@@ -116,14 +118,15 @@ export class ReservationsService {
     if (status === 'DONE') qb.andWhere('r.endAt <= :now', { now });
   }
 
-  /** 예약 등록: R1~R7 검사 후 저장 */
+  /** 예약 등록: R1~R7, R15 검사 후 저장 */
   async create(
     user: AuthUser,
     input: CreateReservationInput,
     createdVia: CreatedVia = 'MANUAL',
   ) {
     const now = new Date();
-    const timeError = checkReservationTime(input, now); // R1~R4
+    const meetingType = input.meetingType ?? 'MEETING';
+    const timeError = checkReservationTime(input, now, { meetingType, role: user.role }); // R1~R4, R15
     if (timeError) throw new BadRequestException(timeError);
 
     const startAt = kstDateTime(input.date, input.startTime);
@@ -166,6 +169,7 @@ export class ReservationsService {
           roomId: room.id,
           userId: user.id,
           title: input.title,
+          meetingType,
           attendeeCount: input.attendeeCount,
           startAt,
           endAt,

@@ -59,6 +59,16 @@ const TITLES = [
   '마케팅 전략 회의', '예산 검토', '프로젝트 킥오프', '서비스 장애 회고',
 ];
 
+// 교육·행사 유형으로 저장할 제목
+const TRAINING_TITLES = new Set(['신입 교육']);
+
+/** 설악(4번)을 하루 종일 쓰는 교육·행사. 관리자(총무팀)가 잡는다. (R15) */
+function allDayTraining(offset: number, weekday: number): string | null {
+  if (offset > 0 && offset <= 7 && weekday === 3) return '신입 OJT (하루 종일)';
+  if (offset < 0 && weekday === 4) return '팀장 리더십 워크숍';
+  return null;
+}
+
 // 하루 예약 패턴: [시작분, 끝분] (10:00=600, 19:00=1140), 서로 겹치지 않고 최대 3시간
 const DAY_PATTERNS: [number, number][][] = [
   [[600, 660], [720, 810], [900, 1020]],
@@ -119,7 +129,7 @@ export class SeedService implements OnApplicationBootstrap {
           email,
           departmentId,
           passwordHash,
-          phone: `010-0000-${String(i + 1).padStart(4, '0')}`,
+          phone: `070-7100-${String(i + 1).padStart(4, '0')}`, // 회사 내선 (가상)
           role: i === 0 ? ('ADMIN' as const) : ('EMPLOYEE' as const),
         })),
       );
@@ -145,6 +155,10 @@ export class SeedService implements OnApplicationBootstrap {
     const todayStart = kstDateTime(today, '00:00');
     const rows: Partial<Reservation>[] = [];
     let index = 0;
+    const busy = (userId: number, startAt: Date, endAt: Date) =>
+      rows.some(
+        (r) => r.userId === userId && r.status !== 'CANCELLED' && r.startAt! < endAt && r.endAt! > startAt,
+      );
 
     for (let offset = -7; offset <= 14; offset++) {
       const date = addDays(today, offset);
@@ -152,9 +166,27 @@ export class SeedService implements OnApplicationBootstrap {
       const isToday = offset === 0;
       if (!isToday && (weekday === 0 || weekday === 6)) continue; // 주말은 비움
 
-      // 사용 중인 회의실 4개(1~4번)만
-      for (let roomId = 1; roomId <= 4; roomId++) {
+      // 사용 중인 회의실 4개(1~4번)만. 하루 종일 교육이 있는 설악(4번)부터 채워서 다른 회의와 사람이 겹치지 않게 한다.
+      for (const roomId of [4, 3, 2, 1]) {
         const room = ROOMS[roomId - 1];
+        const training = roomId === 4 && !isToday ? allDayTraining(offset, weekday) : null;
+        if (training) {
+          index++;
+          rows.push({
+            roomId,
+            userId: 1,
+            title: training,
+            meetingType: 'TRAINING',
+            attendeeCount: 10,
+            startAt: kstDateTime(date, '10:00'),
+            endAt: kstDateTime(date, '18:00'),
+            status: 'CONFIRMED',
+            cancelledAt: null,
+            createdVia: 'MANUAL',
+            createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60_000),
+          });
+          continue;
+        }
         const blocks = isToday
           ? TODAY_PATTERNS[roomId - 1]
           : pick(DAY_PATTERNS).filter(() => offset < 0 || random() < 0.7);
@@ -163,8 +195,11 @@ export class SeedService implements OnApplicationBootstrap {
           index++;
           const startAt = kstDateTime(date, minutesToTime(start));
           const endAt = kstDateTime(date, minutesToTime(end));
-          // 김가상(user@example.com, 2번)에게 5건 중 1건을 준다.
-          const userId = index % 5 === 0 ? 2 : 1 + Math.floor(random() * USERS.length);
+          // 김가상(user@example.com, 2번)에게 5건 중 1건을 준다. 같은 사람의 회의가 겹치지 않게 한다.
+          let userId = index % 5 === 0 ? 2 : 1 + Math.floor(random() * USERS.length);
+          for (let tries = 0; busy(userId, startAt, endAt) && tries < USERS.length; tries++) {
+            userId = (userId % USERS.length) + 1;
+          }
 
           let cancelled = index % 7 === 0;
           if (isToday && (roomId === 2 || roomId === 4) && start === TODAY_PATTERNS[roomId - 1][1][0]) {
@@ -177,10 +212,12 @@ export class SeedService implements OnApplicationBootstrap {
               : new Date(Math.min(startAt.getTime(), now.getTime()) - 26 * 60 * 60_000);
           }
 
+          const title = pick(TITLES);
           rows.push({
             roomId,
             userId,
-            title: pick(TITLES),
+            title,
+            meetingType: TRAINING_TITLES.has(title) ? 'TRAINING' : 'MEETING',
             attendeeCount: 2 + Math.floor(random() * (room.capacity - 1)),
             startAt,
             endAt,

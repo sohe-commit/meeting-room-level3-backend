@@ -9,8 +9,10 @@ import {
 } from '@nestjs/common';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -19,6 +21,7 @@ import {
 import { CurrentUser, IdPipe, Roles } from '../common/auth.js';
 import type { AuthUser } from '../common/auth.js';
 import { todayKst } from '../common/time.js';
+import type { MeetingType } from '../entities/reservation.entity.js';
 import { ReservationsService } from './reservations.service.js';
 
 const trim = ({ value }: { value: unknown }) =>
@@ -51,6 +54,11 @@ export class CreateReservationDto {
   @IsInt({ message: '참석 인원을 숫자로 입력해 주세요.' })
   @Min(1, { message: '참석 인원은 1명 이상이어야 해요.' })
   attendeeCount: number;
+
+  /** 회의 유형 (없으면 일반 회의) */
+  @IsOptional()
+  @IsIn(['MEETING', 'TRAINING'], { message: '회의 유형을 골라 주세요.' })
+  meetingType?: MeetingType;
 }
 
 const toId = (value?: string) => (value ? Number(value) || undefined : undefined);

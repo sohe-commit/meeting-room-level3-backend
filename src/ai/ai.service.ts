@@ -7,6 +7,7 @@ import {
 import OpenAI from 'openai';
 import type { AuthUser } from '../common/auth.js';
 import { checkReservationTime } from '../common/reservation-rules.js';
+import type { DurationContext } from '../common/reservation-rules.js';
 import {
   CLOSE_MINUTES,
   OPEN_MINUTES,
@@ -19,6 +20,7 @@ import {
   todayKst,
 } from '../common/time.js';
 import type { Room } from '../entities/index.js';
+import type { MeetingType } from '../entities/reservation.entity.js';
 import { ReservationsService } from '../reservations/reservations.service.js';
 import type { EquipmentNeeds } from '../reservations/reservations.service.js';
 import { MAX_AI_DAYS, cleanDates, shortDate } from './ai-dates.js';
@@ -35,6 +37,7 @@ export interface ChatTurn {
 
 export interface Extracted {
   dates: string[];
+  meetingType: MeetingType;
   startTime: string | null;
   endTime: string | null;
   durationMinutes: number | null;
@@ -69,6 +72,7 @@ ${calendar(now)}
 대화를 읽고 아래 JSON 하나만 출력해. 설명은 쓰지 마.
 {
   "dates": ["YYYY-MM-DD", ...],
+  "meetingType": "MEETING" 또는 "TRAINING",
   "startTime": "HH:mm" (24시간제) 또는 null,
   "endTime": "HH:mm" 또는 null,
   "durationMinutes": 숫자 또는 null,
@@ -84,6 +88,8 @@ ${calendar(now)}
 - 날짜를 말하지 않았으면 dates 는 빈 배열.
 - "오후 2시"는 14:00, "2시 반"은 업무 시간이면 14:30 처럼 바꿔. "10~11시"는 10:00 부터 11:00 까지.
 - "1시간", "90분", "한 시간 반" 같은 길이는 durationMinutes 로.
+- "하루 종일", "종일"은 startTime 10:00, endTime 19:00. "오전 내내"는 10:00~13:00, "오후 내내"는 13:00~19:00.
+- meetingType: 교육, OJT, 온보딩, 워크숍, 세미나, 설명회, 행사처럼 교육·행사 성격이면 "TRAINING", 그 밖의 회의·면접·미팅은 "MEETING".
 - "TV", "모니터", "화면" → tv / "화상회의", "화상", "줌", "원격" → videoConf / "화이트보드", "보드" → whiteboard / "빔", "빔프로젝터", "프로젝터" → projector.
 - 대화가 여러 줄이면 앞의 말과 도우미의 질문을 이어서 읽고 조건을 합쳐. 예: 도우미가 "몇 명이 참석하나요?"라고 묻고 사용자가 "4명"이라고 하면 attendeeCount 는 4.
 - 마지막 말이 앞의 조건을 바꾸면 마지막 말을 따라.
@@ -133,6 +139,7 @@ export class AiService {
       const needs = raw.needs ?? {};
       return {
         dates: cleanDates(raw.dates),
+        meetingType: raw.meetingType === 'TRAINING' ? 'TRAINING' : 'MEETING',
         startTime: str(raw.startTime),
         endTime: str(raw.endTime),
         durationMinutes: num(raw.durationMinutes),
@@ -171,6 +178,7 @@ export class AiService {
 
     const conditions = {
       dates,
+      meetingType: e.meetingType,
       startTime: e.startTime,
       endTime: minutesToTime(Math.min(end, 24 * 60 - 1)),
       attendeeCount: e.attendeeCount,
@@ -187,11 +195,12 @@ export class AiService {
       };
     }
 
-    // R1~R4 를 날짜마다 사람이 직접 예약할 때와 똑같이 검사한다. (R10)
+    // R1~R4, R15 를 날짜마다 사람이 직접 예약할 때와 똑같이 검사한다. (R10)
+    const rule = { meetingType: conditions.meetingType, role: user.role };
     const failures: { date: string; message: string }[] = [];
     const okDates: string[] = [];
     for (const date of dates) {
-      const timeError = checkReservationTime({ date, ...conditions }, now);
+      const timeError = checkReservationTime({ date, ...conditions }, now, rule);
       if (timeError) failures.push({ date, message: timeError });
       else okDates.push(date);
     }
@@ -234,7 +243,7 @@ export class AiService {
         reservations: [],
         failures,
         suggestions:
-          dates.length === 1 ? await this.suggest({ date: dates[0], ...conditions }, now) : [],
+          dates.length === 1 ? await this.suggest({ date: dates[0], ...conditions }, now, rule) : [],
       };
     }
 
@@ -264,7 +273,14 @@ export class AiService {
   private async bookFirst(
     user: AuthUser,
     rooms: Room[],
-    c: { date: string; startTime: string; endTime: string; title: string; attendeeCount: number },
+    c: {
+      date: string;
+      startTime: string;
+      endTime: string;
+      title: string;
+      attendeeCount: number;
+      meetingType: MeetingType;
+    },
   ) {
     for (const room of rooms) {
       try {
@@ -277,6 +293,7 @@ export class AiService {
             endTime: c.endTime,
             title: c.title,
             attendeeCount: c.attendeeCount,
+            meetingType: c.meetingType,
           },
           'AI',
         );
@@ -292,6 +309,7 @@ export class AiService {
   private async suggest(
     c: { date: string; startTime: string; endTime: string; attendeeCount: number; needs: EquipmentNeeds },
     now: Date,
+    rule: DurationContext,
   ) {
     const start = timeToMinutes(c.startTime);
     const length = timeToMinutes(c.endTime) - start;
@@ -303,7 +321,7 @@ export class AiService {
       const e = s + length;
       if (s < OPEN_MINUTES || e > CLOSE_MINUTES || s % SLOT_MINUTES !== 0) continue;
       const slot = { date: c.date, startTime: minutesToTime(s), endTime: minutesToTime(e) };
-      if (checkReservationTime(slot, now)) continue;
+      if (checkReservationTime(slot, now, rule)) continue;
       const rooms = await this.reservations.findAvailableRooms(
         c.date,
         slot.startTime,

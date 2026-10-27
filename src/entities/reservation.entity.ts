@@ -13,6 +13,8 @@ import { User } from './user.entity.js';
 
 export type ReservationStatus = 'CONFIRMED' | 'CANCELLED';
 export type CreatedVia = 'MANUAL' | 'AI';
+/** 회의 유형: 일반 회의 / 교육·행사 (교육·행사는 관리자만 3시간을 넘겨 잡을 수 있다) */
+export type MeetingType = 'MEETING' | 'TRAINING';
 
 @Entity('reservations')
 @Index(['roomId', 'startAt'])
@@ -36,6 +38,9 @@ export class Reservation {
 
   @Column({ type: 'varchar', length: 100 })
   title: string;
+
+  @Column({ name: 'meeting_type', type: 'varchar', length: 10, default: 'MEETING' })
+  meetingType: MeetingType;
 
   @Column({ name: 'attendee_count', type: 'int' })
   attendeeCount: number;

@@ -53,3 +53,25 @@ describe('한국 시간 계산', () => {
     expect(displayStatus({ ...r, status: 'CANCELLED' }, now)).toBe('CANCELLED');
   });
 });
+
+describe('유형·역할별 길이 제한 (R15)', () => {
+  const allDay = { ...ok, startTime: '10:00', endTime: '19:00' };
+
+  it('직원은 교육·행사여도 3시간을 넘길 수 없음', () => {
+    expect(checkReservationTime(allDay, now, { role: 'EMPLOYEE', meetingType: 'TRAINING' })).toContain('총무팀에 요청');
+  });
+
+  it('관리자도 일반 회의는 3시간까지', () => {
+    expect(checkReservationTime(allDay, now, { role: 'ADMIN', meetingType: 'MEETING' })).toContain('교육·행사');
+  });
+
+  it('관리자가 교육·행사로 잡으면 하루 종일(10~19시) 허용', () => {
+    expect(checkReservationTime(allDay, now, { role: 'ADMIN', meetingType: 'TRAINING' })).toBeNull();
+  });
+
+  it('교육·행사여도 운영 시간 밖은 거절', () => {
+    expect(
+      checkReservationTime({ ...ok, startTime: '09:00', endTime: '18:00' }, now, { role: 'ADMIN', meetingType: 'TRAINING' }),
+    ).toContain('오전 10시');
+  });
+});

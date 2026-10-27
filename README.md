@@ -47,7 +47,7 @@ npm run start:dev      # http://localhost:4100
 |---|---|
 | R1 | 예약은 10:00~19:00 안에서만 |
 | R2 | 30분 단위 |
-| R3 | 한 번에 최소 30분, 최대 3시간 |
+| R3 | 한 번에 최소 30분, 최대 3시간 (예외는 R15) |
 | R4 | 지난 시간 불가, 오늘부터 30일 뒤까지 |
 | R5 | 같은 회의실 시간 겹침 금지 (끝=시작은 허용, 동시에 눌러도 한 명만 성공) |
 | R6 | 참석 인원 ≤ 정원 |
@@ -59,6 +59,7 @@ npm run start:dev      # http://localhost:4100
 | R12 | 제보 처리 완료는 관리자만, 한 번 처리하면 되돌릴 수 없음 |
 | R13 | 장비 고장 제보는 그 회의실에 있는 장비(또는 기타 장비)만 고를 수 있음 |
 | R14 | AI로 여러 날을 한 번에 예약할 때는 최대 5일, 날짜마다 R1~R7 검사 (되는 날만 예약하고 안 되는 날은 이유 안내) |
+| R15 | 3시간을 넘는 예약은 관리자가 회의 유형을 교육·행사(TRAINING)로 고를 때만, 하루 종일(10~19시)까지 |
 
 모든 날짜·시간은 한국 시간 기준으로 계산해요. (Render 서버가 UTC여도 같은 결과)
 
@@ -72,7 +73,7 @@ npm run start:dev      # http://localhost:4100
 | 회의실 목록(필터) / 상세 | `GET /rooms?minCapacity=&tv=&videoConf=&whiteboard=&projector=`, `GET /rooms/:id?date=` | 로그인 |
 | 회의실 등록 / 수정·사용 중지 | `POST /rooms`, `PATCH /rooms/:id` | 관리자 |
 | 하루 예약표 | `GET /reservations/timeline?date=` | 로그인 |
-| 예약 등록 / 내 예약 / 상세 / 취소 | `POST /reservations`, `GET /reservations/me?status=`, `GET /reservations/:id`, `PATCH /reservations/:id/cancel` | 로그인 (취소는 본인) |
+| 예약 등록 / 내 예약 / 상세 / 취소 | `POST /reservations` (`meetingType`: MEETING·TRAINING, 없으면 MEETING), `GET /reservations/me?status=`, `GET /reservations/:id`, `PATCH /reservations/:id/cancel` | 로그인 (취소는 본인) |
 | 전체 예약 (필터·검색) | `GET /reservations?date=&roomId=&departmentId=&status=&q=` | 관리자 |
 | 시설 제보 보기 / 쓰기 | `GET /rooms/:id/issues`, `POST /rooms/:id/issues` | 로그인 |
 | 전체 제보 / 처리 완료 | `GET /issues?roomId=&category=&equipment=&status=`, `PATCH /issues/:id/resolve` | 관리자 |
