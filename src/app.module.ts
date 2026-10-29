@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminController } from './admin/admin.controller.js';
 import { SeedService } from './admin/seed.service.js';
+import { AiUsageService } from './ai/ai-usage.service.js';
 import { AiController } from './ai/ai.controller.js';
 import { AiService } from './ai/ai.service.js';
 import { AuthController } from './auth/auth.controller.js';
@@ -45,6 +46,7 @@ import { RoomsService } from './rooms/rooms.service.js';
     RoomsService,
     SeedService,
     AiService,
+    AiUsageService,
   ],
 })
 export class AppModule {}

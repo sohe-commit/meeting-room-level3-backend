@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { CurrentUser } from '../common/auth.js';
 import type { AuthUser } from '../common/auth.js';
+import { AiUsageService } from './ai-usage.service.js';
 import { AiService } from './ai.service.js';
 import type { ChatTurn } from './ai.service.js';
 
@@ -41,10 +42,16 @@ class AiReserveDto {
 
 @Controller('ai')
 export class AiController {
-  constructor(private readonly ai: AiService) {}
+  constructor(
+    private readonly ai: AiService,
+    private readonly usage: AiUsageService,
+  ) {}
 
   @Post('reserve')
-  reserve(@CurrentUser() user: AuthUser, @Body() dto: AiReserveDto) {
-    return this.ai.reserve(user, dto.text, dto.history ?? []);
+  async reserve(@CurrentUser() user: AuthUser, @Body() dto: AiReserveDto) {
+    // GPT 요금이 끝없이 나가지 않게, GPT를 부르기 전에 오늘 횟수부터 확인한다. (R16)
+    const usage = await this.usage.take(user.id);
+    const result = await this.ai.reserve(user, dto.text, dto.history ?? []);
+    return { ...result, usage };
   }
 }

@@ -62,6 +62,7 @@ npm run start:dev      # http://localhost:4100
 | R13 | 장비 고장 제보는 그 회의실에 있는 장비(또는 기타 장비)만 고를 수 있음 |
 | R14 | AI로 여러 날·여러 시간을 한 번에 예약할 때는 합쳐서 최대 5건, 한 건마다 R1~R7 검사 (되는 건만 예약하고 안 되는 건은 이유 안내) |
 | R15 | 3시간을 넘는 예약은 관리자가 회의 유형을 교육·행사(TRAINING)로 고를 때만, 하루 종일(10~19시)까지 |
+| R16 | AI 예약은 한 사람당 하루 50번까지 (넘으면 429, GPT를 부르지 않음) |
 
 모든 날짜·시간은 한국 시간 기준으로 계산해요. (Render 서버가 UTC여도 같은 결과)
 
@@ -79,7 +80,7 @@ npm run start:dev      # http://localhost:4100
 | 전체 예약 (필터·검색) | `GET /reservations?date=&roomId=&departmentId=&status=&q=` | 관리자 |
 | 시설 제보 보기 / 쓰기 | `GET /rooms/:id/issues`, `POST /rooms/:id/issues` | 로그인 |
 | 전체 제보 / 처리 완료 | `GET /issues?roomId=&category=&equipment=&status=`, `PATCH /issues/:id/resolve` | 관리자 |
-| AI 예약 (챗봇) | `POST /ai/reserve` — `{ text, history? }` (history: 앞서 주고받은 대화, 최대 12줄) | 로그인 |
+| AI 예약 (챗봇) | `POST /ai/reserve` — `{ text, history? }` (history: 앞서 주고받은 대화, 최대 12줄). 답에 `usage: { used, limit }` (오늘 쓴 횟수)가 함께 와요 | 로그인 |
 | 현황판 | `GET /admin/dashboard` | 관리자 |
 | 가상 데이터 다시 채우기 | `POST /admin/seed` | 관리자 |
 
